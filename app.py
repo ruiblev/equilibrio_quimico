@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
-from components.microplate import render_microplate
+from components import microplate
+import importlib
+importlib.reload(microplate)
+render_microplate = microplate.render_microplate
 
 # --- Configuração da Página ---
 st.set_page_config(
