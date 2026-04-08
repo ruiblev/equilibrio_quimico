@@ -12,6 +12,18 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+div[data-testid="column"]:nth-of-type(2), 
+div[data-testid="stColumn"]:nth-of-type(2) {
+    position: sticky !important;
+    top: 60px !important;
+    align-self: flex-start !important;
+    z-index: 100;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- Constantes de Cores ---
 COLORS = {
     "empty": "transparent",
@@ -114,22 +126,21 @@ def calculate_color(c):
     if fe == 0 and scn == 0:
         return COLORS["empty"]
         
-    # Ag+ e Ox precipitam/complexam e removem os reagentes ativos da solução
     active_scn = max(0, scn - ag)
     active_fe = max(0, fe - ox)
     
-    # Complexo formado depende do limitante
-    complex_amount = min(active_fe, active_scn)
+    # Princípio de Le Châtelier aproximado pela multiplicação (Constante K = Prod/Reag)
+    score = active_fe * active_scn
     
-    if complex_amount >= 3: return COLORS["dark_red_2"]
-    if complex_amount == 2: return COLORS["dark_red_1"]
-    if complex_amount == 1: return COLORS["red"]
+    if score >= 3: return COLORS["dark_red_2"]
+    if score == 2: return COLORS["dark_red_1"]
+    if score == 1: return COLORS["red"]
         
-    # Quando o complexo vermelho é totalmente dissipado:
-    if active_fe > 0:
-        return COLORS["orange"] # Sobra Fe3+ sozinho
-    else:
-        return COLORS["pale_yellow"] # Fica descolorido
+    if score == 0:
+        if active_fe > 0 and fe > 1:
+            return COLORS["orange"] 
+        else:
+            return COLORS["pale_yellow"] 
 
 def apply_practical_dispenser(reagent, drops):
     selected = st.session_state.selected_wells_ui
@@ -375,6 +386,14 @@ with col1:
         with st.expander("3. Identificação de Cavidades", expanded=(st.session_state.p_step == 3)):
             if st.session_state.p_step == 3:
                 st.write("Identifique as cavidades para referência futura:")
+                
+                col_btn, _ = st.columns([1, 1])
+                with col_btn:
+                    if st.button("⚡ Preenchimento Automático (A1-D3)", key="auto_fill_p"):
+                        st.session_state.custom_labels = {f"{r}{c}": f"{r}{c}" for r in ['A','B','C','D'] for c in [1,2,3]}
+                        next_p_step()
+                        st.rerun()
+                        
                 valid_p = True
                 temp_labels_p = {}
                 distinct_check_p = set()
@@ -418,7 +437,7 @@ with col1:
         # FASE 4: PIPETAGEM LIVRE
         with st.expander("4. Estação de Adição Dinâmica", expanded=(st.session_state.p_step == 4)):
             if st.session_state.p_step == 4:
-                st.info("Adicione os volumes livremente e observe o desenrolar das reações termodinâmicas.")
+                st.info("Adicione os volumes livremente e observe o desenrolar das reações.")
                 if st.session_state.p_substep == 1:
                     st.caption("Fase Atual: Criar Equilíbrio [FeSCN]²⁺ em toda a placa.")
                 elif st.session_state.p_substep == 2:
