@@ -142,7 +142,10 @@ def render_microplate(well_colors, active_animation=None, custom_labels=None, pr
             liquid_style += f" --old-color: {old_color}; --new-color: {color};"
 
             is_animating = False
-            if active_animation == 'all':
+            if isinstance(active_animation, list):
+                if well_id in active_animation:
+                    is_animating = True
+            elif active_animation == 'all':
                 is_animating = True
             elif active_animation == 'water' and col in [1, 2]:
                 is_animating = True
