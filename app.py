@@ -115,6 +115,8 @@ with col1:
             valid = True
             temp_labels = {}
             distinct_check = set()
+            empty_count = 0
+            has_duplicates = False
             
             # Grelha Cega (3x4)
             for row in ['A', 'B', 'C', 'D']:
@@ -127,8 +129,10 @@ with col1:
                         
                         if not v_strip:
                             valid = False
+                            empty_count += 1
                         elif v_strip in distinct_check:
-                            valid = False # Duplicados inválidos
+                            valid = False
+                            has_duplicates = True
                         else:
                             temp_labels[key] = v_strip
                             distinct_check.add(v_strip)
@@ -141,7 +145,15 @@ with col1:
                     next_step()
                 st.button("Atribuir e Avançar para Passo 2 ➔", on_click=confirm_labels, type="primary")
             else:
-                st.info("Preencha todas as 12 caixas com referências distintas/únicas para poder prosseguir.")
+                if empty_count == 12:
+                    st.info("Aguardando inserção... Preencha todas as 12 caixas com referências para poder prosseguir.")
+                else:
+                    if empty_count > 0 and has_duplicates:
+                        st.error(f"⚠️ **Erro no preenchimento:** Detetadas referências duplicadas e faltam preencher {empty_count} cavidade(s).")
+                    elif empty_count > 0:
+                        st.warning(f"⚠️ **Preenchimento incompleto:** Por favor, preencha as {empty_count} cavidade(s) que se encontra(m) em branco.")
+                    elif has_duplicates:
+                        st.error("⚠️ **Erro de duplicação:** Encontram-se referências repetidas. Cada cavidade deve possuir um nome estritamente único.")
         else:
             st.success("✅ Nomenclaturas registadas com sucesso.")
 
