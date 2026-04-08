@@ -438,16 +438,32 @@ with col1:
                 st.markdown("**Atalhos de Seleção Múltipla:**")
                 sc = st.columns(4)
                 all_w = [f"{r}{c}" for r in ['A','B','C','D'] for c in [1,2,3]]
-                def _sel(ww): st.session_state.selected_wells_ui = ww
+                def _sel(ww): 
+                    st.session_state.selected_wells_ui = ww
+                
                 sc[0].button("Toda a Placa", on_click=_sel, args=(all_w,))
-                sc[1].button("Toda Linha A", on_click=_sel, args=([f"A{c}" for c in [1,2,3]],))
-                sc[2].button("Toda Coluna 1", on_click=_sel, args=([f"{r}1" for r in ['A','B','C','D']],))
+                
+                with sc[1]:
+                    linha_op = st.selectbox("Linha a selecionar:", ["-", "1ª Linha", "2ª Linha", "3ª Linha", "4ª Linha"], label_visibility="collapsed")
+                    if linha_op != "-" and st.button("Aplicar Linha"):
+                        r_map = {"1ª Linha": 'A', "2ª Linha": 'B', "3ª Linha": 'C', "4ª Linha": 'D'}
+                        row_char = r_map[linha_op]
+                        _sel([f"{row_char}{c}" for c in [1,2,3]])
+                
+                with sc[2]:
+                    col_op = st.selectbox("Coluna a selecionar:", ["-", "1ª Coluna", "2ª Coluna", "3ª Coluna"], label_visibility="collapsed")
+                    if col_op != "-" and st.button("Aplicar Coluna"):
+                        c_num = col_op.split("ª")[0]
+                        _sel([f"{r}{c_num}" for r in ['A','B','C','D']])
+
                 sc[3].button("Limpar Alvos", on_click=_sel, args=([],))
 
-                st.multiselect("Cavidades Alvo Específicas:", all_w, key="selected_wells_ui")
+                def name_fmt(w):
+                    return st.session_state.custom_labels.get(w, w)
+
+                st.multiselect("Cavidades Alvo Específicas:", all_w, format_func=name_fmt, key="selected_wells_ui")
                 
-                if st.button("💉 Pipetar Reagente para Alvos", type="primary"):
-                    apply_practical_dispenser(p_reag, p_drops)
+                st.button("💉 Pipetar Reagente para Alvos", type="primary", on_click=apply_practical_dispenser, args=(p_reag, p_drops))
 
 
 with col2:
