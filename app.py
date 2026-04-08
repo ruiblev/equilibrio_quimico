@@ -116,36 +116,48 @@ def reset_simulation():
         reset_all_state()
 
 # --- FUNÇÕES CALCULADORAS DO MODO PRÁTICO ---
+def lerp_color(hex1, hex2, t):
+    """Interpolação linear entre duas cores hex. t=0 retorna hex1, t=1 retorna hex2."""
+    t = max(0.0, min(1.0, t))
+    r1, g1, b1 = int(hex1[1:3],16), int(hex1[3:5],16), int(hex1[5:7],16)
+    r2, g2, b2 = int(hex2[1:3],16), int(hex2[3:5],16), int(hex2[5:7],16)
+    r = int(r1 + (r2 - r1) * t)
+    g = int(g1 + (g2 - g1) * t)
+    b = int(b1 + (b2 - b1) * t)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
 def calculate_color(c):
-    fe = c["Fe3+"]
+    fe  = c["Fe3+"]
     scn = c["SCN-"]
-    ag = c["Ag+"]
-    ox = c["C2O4_2-"]
+    ag  = c["Ag+"]
+    ox  = c["C2O4_2-"]
     
+    # Sem reagentes base → vazio
     if fe == 0 and scn == 0:
         return COLORS["empty"]
 
-    # Ag+ precipita SCN- (AgSCN branco); Oxalato complexa Fe³+ (incolor/amarelo)
+    # Ag+ precipita SCN⁻ → branco opaco (sem gradiente, é precipitado sólido)
     active_scn = max(0, scn - ag)
     active_fe  = max(0, fe - ox)
     
-    # Precipitado branco: Ag+ excedeu SCN- disponível (toda a cor desaparece)
     if ag > 0 and active_scn == 0:
         return COLORS["white_ppt"]
     
-    # Equilibrio deslocado pela remoção de Fe³+: sobra SCN- livre mas sem Fe -> amarelo/incolor
+    # Oxalato removeu todo o Fe³⁺ → amarelo com intensidade crescente com ox
     if ox > 0 and active_fe == 0:
-        return COLORS["yellow_fe"]
+        # ox=1 → amarelo suave; ox alto → amarelo mais intenso/saturado
+        t = min(1.0, (ox - 1) / 4.0)  # satura ao 5º excesso
+        return lerp_color("#c9a227", "#b8860b", t)
     
-    # Equilibrio base ou deslocado no sentido direto (mais produto vermelho)
+    # Equilíbrio com ambos os reagentes ativos: vermelho crescente
     if active_fe > 0 and active_scn > 0:
-        # Quanto maior o excesso de reagentes adicionados, mais intenso o vermelho
-        extra = (active_fe + active_scn) - 2   # estado base = 1 gota Fe + 1 gota SCN = soma 2
-        if extra >= 2:
-            return COLORS["dark_red_1"]  # vermelho mais intenso
-        else:
-            return COLORS["red"]         # vermelho-vivo base
+        # Base: 1 gota Fe + 1 gota SCN = vermelho-vivo
+        # Quanto mais Fe ou SCN adicionado, mais intenso
+        intensity = (active_fe + active_scn) - 2  # começa em 0 para o par base (1+1)
+        t = min(1.0, intensity / 6.0)              # satura com 6 gotas de excesso
+        return lerp_color("#c0392b", "#5c0606", t)
     
+    # Caso residual (fe ou scn sozinhos)
     return COLORS["yellow_fe"]
 
 def apply_practical_dispenser(reagent, drops):
@@ -291,14 +303,15 @@ with col1:
             def mk_A(): 
                 st.session_state.active_animation = 'A'
                 st.session_state.prev_well_colors = st.session_state.well_colors.copy()
-                st.session_state.well_colors["A2"] = COLORS["dark_red_1"]
-                st.session_state.well_colors["A3"] = COLORS["dark_red_1"]
+                # 1 gota -> intensidade leve, 2 gotas -> mais intenso
+                st.session_state.well_colors["A2"] = lerp_color("#c0392b", "#5c0606", 2/6)
+                st.session_state.well_colors["A3"] = lerp_color("#c0392b", "#5c0606", 4/6)
                 st.session_state.added_reagents['A'] = True
             def mk_B(): 
                 st.session_state.active_animation = 'B'
                 st.session_state.prev_well_colors = st.session_state.well_colors.copy()
-                st.session_state.well_colors["B2"] = COLORS["dark_red_1"]
-                st.session_state.well_colors["B3"] = COLORS["dark_red_1"]
+                st.session_state.well_colors["B2"] = lerp_color("#c0392b", "#5c0606", 2/6)
+                st.session_state.well_colors["B3"] = lerp_color("#c0392b", "#5c0606", 4/6)
                 st.session_state.added_reagents['B'] = True
             def mk_C(): 
                 st.session_state.active_animation = 'C'
@@ -309,8 +322,9 @@ with col1:
             def mk_D(): 
                 st.session_state.active_animation = 'D'
                 st.session_state.prev_well_colors = st.session_state.well_colors.copy()
-                st.session_state.well_colors["D2"] = COLORS["yellow_fe"]
-                st.session_state.well_colors["D3"] = COLORS["yellow_fe"]
+                # 1 gota -> amarelo base, 2 gotas -> amarelo mais intenso
+                st.session_state.well_colors["D2"] = lerp_color("#c9a227", "#b8860b", 0/4)
+                st.session_state.well_colors["D3"] = lerp_color("#c9a227", "#b8860b", 1/4)
                 st.session_state.added_reagents['D'] = True
 
             st.caption(f"{lbl.get('A2', '')} (1 gota Fe³⁺); {lbl.get('A3', '')} (2 gotas Fe³⁺)")
@@ -327,13 +341,19 @@ with col1:
 
         with st.expander("📋 Registo de Cores Finais", expanded=(st.session_state.step >= 4 and all(st.session_state.added_reagents.values()))):
             def get_color_name(hex_code):
-                mapping = {
-                    "#c0392b": "Vermelho-vivo",
-                    "#7b0c0c": "Vermelho intenso",
-                    "#e0dfd9": "Precipitado branco opaco",
-                    "#c9a227": "Amarelado (Fe³⁺)"
-                }
-                return mapping.get(hex_code, "Incolor")
+                # Mapeia de forma aproximada para nomes simples
+                if hex_code in ("transparent", ""):
+                    return "Incolor"
+                r, g, b = int(hex_code[1:3],16), int(hex_code[3:5],16), int(hex_code[5:7],16)
+                if r > 150 and g < 80 and b < 80:
+                    brightness = (g + b) / (2 * r + 0.01)
+                    if brightness < 0.1: return "Vermelho intenso"
+                    return "Vermelho-vivo"
+                if r > 140 and g > 100 and b < 60:
+                    return "Amarelado (Fe³⁺)"
+                if r > 200 and g > 200 and b > 180:
+                    return "Precipitado branco opaco"
+                return "Incolor"
             if all(st.session_state.added_reagents.values()):
                 df = pd.DataFrame({
                     "Adicionado (aq)": ["Fe(NO₃)₃", "KSCN", "AgNO₃", "Na₂C₂O₄"],
