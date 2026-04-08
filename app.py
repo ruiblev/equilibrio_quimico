@@ -12,11 +12,11 @@ st.set_page_config(
 # --- Constantes de Cores ---
 COLORS = {
     "empty": "transparent",
-    "red": "#c41b1b",        # [FeSCN]2+ padrão
-    "dark_red_1": "#8a0c0c",   # Mais [FeSCN]2+
-    "dark_red_2": "#4a0505",   # Muito mais [FeSCN]2+
-    "orange": "#d18f2e",       # Menos [FeSCN]2+, mais Fe3+
-    "pale_yellow": "#f0e6b6"   # Quase sem [FeSCN]2+, descolorado/amarelo pálido
+    "red": "#c41b1b",        
+    "dark_red_1": "#8a0c0c",   
+    "dark_red_2": "#4a0505",   
+    "orange": "#d18f2e",       
+    "pale_yellow": "#f0e6b6"   
 }
 
 # --- Inicialização do Estado ---
@@ -24,7 +24,6 @@ if 'step' not in st.session_state:
     st.session_state.step = 1
 
 if 'well_colors' not in st.session_state:
-    # Initialize all 12 wells as empty
     st.session_state.well_colors = {
         f"{r}{c}": COLORS["empty"] 
         for r in ['A', 'B', 'C', 'D'] 
@@ -39,36 +38,43 @@ if 'added_reagents' not in st.session_state:
         'D': False
     }
 
+if 'active_animation' not in st.session_state:
+    st.session_state.active_animation = None
+
+# Captura animação pendente
+current_animation = st.session_state.active_animation
+# Limpa para a próxima interação
+st.session_state.active_animation = None
+
 # --- Funções de Ajuda ---
 def next_step():
     st.session_state.step += 1
 
 def reset_simulation():
-    st.session_state.step = 1
-    st.session_state.well_colors = {
-        f"{r}{c}": COLORS["empty"] 
-        for r in ['A', 'B', 'C', 'D'] 
-        for c in [1, 2, 3]
-    }
-    st.session_state.added_reagents = {k: False for k in st.session_state.added_reagents}
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
 
 # Lógica das Reações do Passo 4
 def add_to_row_A():
+    st.session_state.active_animation = 'A'
     st.session_state.well_colors["A2"] = COLORS["dark_red_1"]
     st.session_state.well_colors["A3"] = COLORS["dark_red_2"]
     st.session_state.added_reagents['A'] = True
 
 def add_to_row_B():
+    st.session_state.active_animation = 'B'
     st.session_state.well_colors["B2"] = COLORS["dark_red_1"]
     st.session_state.well_colors["B3"] = COLORS["dark_red_2"]
     st.session_state.added_reagents['B'] = True
 
 def add_to_row_C():
+    st.session_state.active_animation = 'C'
     st.session_state.well_colors["C2"] = COLORS["orange"]
-    st.session_state.well_colors["C3"] = COLORS["pale_yellow"] # com precipitado
+    st.session_state.well_colors["C3"] = COLORS["pale_yellow"]
     st.session_state.added_reagents['C'] = True
 
 def add_to_row_D():
+    st.session_state.active_animation = 'D'
     st.session_state.well_colors["D2"] = COLORS["orange"]
     st.session_state.well_colors["D3"] = COLORS["pale_yellow"]
     st.session_state.added_reagents['D'] = True
@@ -82,103 +88,126 @@ Esta atividade simula o comportamento do equilíbrio químico homogéneo:
 **Fe³⁺ (aq)** *(Amarelo)* **+ SCN⁻ (aq)** *(Incolor)* **⇌ [FeSCN]²⁺ (aq)** *(Vermelho)*
 """)
 
-col1, col2 = st.columns([1, 1.2], gap="large")
+col1, col2 = st.columns([1.1, 1.1], gap="large")
 
 with col1:
     st.subheader("Trabalho Laboratorial: Procedimento")
     
     # Passo 1
     with st.expander("Passo 1", expanded=(st.session_state.step == 1)):
-        st.write("1. Numere as cavidades da placa de microanálise da seguinte forma:")
-        st.write("- Linhas: A, B, C, D")
-        st.write("- Colunas: 1, 2, 3")
+        st.write("1. Identifique as cavidades da placa de microanálise inserindo a sua referência (ex: A1, B2) na grelha abaixo:")
         if st.session_state.step == 1:
-            st.button("Avançar para Passo 2 ➔", on_click=next_step, type="primary")
+            st.markdown("---")
+            m_cols = st.columns([0.5, 1, 1, 1])
+            with m_cols[1]: st.markdown("**Col 1**")
+            with m_cols[2]: st.markdown("**Col 2**")
+            with m_cols[3]: st.markdown("**Col 3**")
+            all_correct = True
+            
+            for row in ['A', 'B', 'C', 'D']:
+                r_cols = st.columns([0.5, 1, 1, 1])
+                with r_cols[0]: st.markdown(f"<br>**Linha {row}**", unsafe_allow_html=True)
+                for i, col in enumerate([1, 2, 3]):
+                    with r_cols[i+1]:
+                        val = st.text_input("Cav", key=f"in_{row}{col}", placeholder=f"Ex: {row}{col}", label_visibility="collapsed")
+                        # Verifica se o aluno inseriu o label correto, ignorando espaços e maiúsculas
+                        if val.strip().upper() != f"{row}{col}":
+                            all_correct = False
+
+            st.markdown("---")
+            if all_correct:
+                st.success("✅ Todas as cavidades foram identificadas corretamente!")
+                st.button("Avançar para Passo 2 ➔", on_click=next_step, type="primary")
+            else:
+                st.info("Preencha todas as 12 caixas corretamente para prosseguir.")
+        else:
+            st.success("✅ Cavidades identificadas.")
 
     # Passo 2
     with st.expander("Passo 2", expanded=(st.session_state.step == 2)):
         st.write("2. Adicione a cada uma das cavidades:")
         st.write("- 1 gota de Fe(NO₃)₃ (aq)")
         st.write("- 1 gota de KSCN (aq)")
-        st.info("Agite até observar a cor vermelha característica de [FeSCN]²⁺(aq).")
+        st.info("Observe a cor característica ao agitar.")
         if st.session_state.step == 2:
-            if st.button("Adicionar Reagentes a todas as cavidades", type="primary"):
+            def trigger_step_2():
+                st.session_state.active_animation = 'all'
                 for k in st.session_state.well_colors:
                     st.session_state.well_colors[k] = COLORS["red"]
                 next_step()
+                
+            st.button("Adicionar Reagentes a todas as cavidades", on_click=trigger_step_2, type="primary")
 
     # Passo 3
     with st.expander("Passo 3", expanded=(st.session_state.step == 3)):
-        st.write("3. Adicione:")
+        st.write("3. Nivele os volumes:")
         st.write("- 2 gotas de água nas cavidades da coluna 1")
         st.write("- 1 gota de água nas cavidades da coluna 2")
-        st.caption("Isto garante que os volumes finais sejam idênticos em todas as cavidades.")
         if st.session_state.step == 3:
-            if st.button("Adicionar Água (Volumes nivelados) ➔", type="primary"):
+            def trigger_step_3():
+                st.session_state.active_animation = 'water'
                 next_step()
+                
+            st.button("Adicionar Água nas Colunas 1 e 2 ➔", on_click=trigger_step_3, type="primary")
 
     # Passo 4
     with st.expander("Passo 4", expanded=(st.session_state.step == 4)):
-        st.write("4. Adicione gotas das várias soluções reagentes, agitando:")
+        st.write("4. Adicione gotas das várias soluções reagentes:")
         
         st.markdown("**Linha A** (Efeito de Fe³⁺)")
-        st.write("- A2: 1 gota de Fe(NO₃)₃ (aq)\n- A3: 2 gotas de Fe(NO₃)₃ (aq)")
+        st.caption("A2 (1 gota); A3 (2 gotas)")
         if not st.session_state.added_reagents['A']:
-            st.button("Adicionar na Linha A", on_click=add_to_row_A, key="btn_A")
+            st.button("Adicionar Fe(NO₃)₃", on_click=add_to_row_A, key="btn_A")
             
         st.markdown("**Linha B** (Efeito de SCN⁻)")
-        st.write("- B2: 1 gota de KSCN (aq)\n- B3: 2 gotas de KSCN (aq)")
+        st.caption("B2 (1 gota); B3 (2 gotas)")
         if not st.session_state.added_reagents['B']:
-            st.button("Adicionar na Linha B", on_click=add_to_row_B, key="btn_B")
+            st.button("Adicionar KSCN", on_click=add_to_row_B, key="btn_B")
             
         st.markdown("**Linha C** (Efeito de Ag⁺)")
-        st.write("- C2: 1 gota de AgNO₃ (aq)\n- C3: 2 gotas de AgNO₃ (aq)")
+        st.caption("C2 (1 gota); C3 (2 gotas)")
         if not st.session_state.added_reagents['C']:
-            st.button("Adicionar na Linha C", on_click=add_to_row_C, key="btn_C")
+            st.button("Adicionar AgNO₃", on_click=add_to_row_C, key="btn_C")
             
         st.markdown("**Linha D** (Efeito de C₂O₄²⁻)")
-        st.write("- D2: 1 gota de Na₂C₂O₄ (aq)\n- D3: 2 gotas de Na₂C₂O₄ (aq)")
+        st.caption("D2 (1 gota); D3 (2 gotas)")
         if not st.session_state.added_reagents['D']:
-            st.button("Adicionar na Linha D", on_click=add_to_row_D, key="btn_D")
+            st.button("Adicionar Na₂C₂O₄", on_click=add_to_row_D, key="btn_D")
 
         if all(st.session_state.added_reagents.values()):
-            st.success("Trabalho concluído! Registe as cores observadas.")
-            if st.button("Ver Questões Pós-Laboratoriais", type="primary"):
-                next_step()
+            st.success("Reagentes adicionados. Verifique a placa e as tonalidades decorrentes do Princípio de Le Châtelier (Análise pós-laboratorial).")
 
     # Pós-laboratório
-    with st.expander("📋 Questões Pós-Laboratoriais", expanded=(st.session_state.step > 4)):
-        st.write("Registo das observações:")
-        
-        # Gerar DataFrame baseado no estado atual
+    with st.expander("📋 Registo de Cores Finais", expanded=(st.session_state.step >= 4 and all(st.session_state.added_reagents.values()))):
         def get_color_name(hex_code):
             rev_colors = {v: k for k, v in COLORS.items()}
-            # Map back to human readable
             mapping = {
                 "red": "Vermelho (Padrão)",
-                "dark_red_1": "Vermelho mais intenso",
-                "dark_red_2": "Vermelho muito intenso",
+                "dark_red_1": "Rubi intenso",
+                "dark_red_2": "Vermelho muito escuro/carmim",
                 "orange": "Alaranjado",
-                "pale_yellow": "Amarelo pálido (Descolorido)"
+                "pale_yellow": "Amarelo pálido/Incolor"
             }
             color_key = rev_colors.get(hex_code, "Incolor")
             return mapping.get(color_key, "Incolor")
 
-        if st.session_state.step > 4:
+        if all(st.session_state.added_reagents.values()):
             data = {
                 "Cavidade": ["A", "B", "C", "D"],
-                "Reagente Adicionado": ["Fe(NO₃)₃ (aq)", "KSCN (aq)", "AgNO₃ (aq)", "Na₂C₂O₄ (aq)"],
-                "Coluna 1 (Controlo)": [get_color_name(st.session_state.well_colors[f"{r}1"]) for r in ['A','B','C','D']],
-                "Coluna 2": [get_color_name(st.session_state.well_colors[f"{r}2"]) for r in ['A','B','C','D']],
-                "Coluna 3": [get_color_name(st.session_state.well_colors[f"{r}3"]) for r in ['A','B','C','D']]
+                "Adicionado (aq)": ["Fe(NO₃)₃", "KSCN", "AgNO₃", "Na₂C₂O₄"],
+                "Col 1 (Controlo)": [get_color_name(st.session_state.well_colors[f"{r}1"]) for r in ['A','B','C','D']],
+                "Col 2 (1 Gota)": [get_color_name(st.session_state.well_colors[f"{r}2"]) for r in ['A','B','C','D']],
+                "Col 3 (2 Gotas)": [get_color_name(st.session_state.well_colors[f"{r}3"]) for r in ['A','B','C','D']]
             }
             df = pd.DataFrame(data)
             st.dataframe(df, hide_index=True)
 
 with col2:
-    st.subheader("Visualização da Placa de Microanálise")
-    # Render component
-    render_microplate(st.session_state.well_colors)
+    st.subheader("Placa de Microanálise")
+    
+    # Passa o current_animation para o render_microplate
+    render_microplate(st.session_state.well_colors, active_animation=current_animation)
 
-    st.markdown("---")
-    st.button("🔄 Reiniciar Simulação", on_click=reset_simulation)
+    colA, colB, colC = st.columns([1,1,1])
+    with colB:
+        st.button("🔄 Reiniciar", on_click=reset_simulation)
