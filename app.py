@@ -183,6 +183,7 @@ with col1:
         if st.session_state.step == 3:
             def trigger_step_3():
                 st.session_state.active_animation = 'water'
+                st.session_state.prev_well_colors = st.session_state.well_colors.copy()
                 next_step()
                 
             st.button("Adicionar Água nas Colunas referidas ➔", on_click=trigger_step_3, type="primary")
