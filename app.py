@@ -515,6 +515,36 @@ with col1:
                 
                 st.button("💉 Pipetar Reagente para Alvos", type="primary", on_click=apply_practical_dispenser, args=(p_reag, p_drops))
 
+                # --- Deteção de Conclusão Automática ---
+                if st.session_state.p_substep == 3:
+                    wc = st.session_state.well_contents
+                    all_w = [f"{r}{c}" for r in ['A','B','C','D'] for c in [1,2,3]]
+                    # Verifica se cada tipo de perturbação já foi aplicada pelo menos uma vez
+                    has_extra_fe  = any(wc[w]["Fe3+"] > 1 for w in all_w)   # Fe extra além do base
+                    has_extra_scn = any(wc[w]["SCN-"] > 1 for w in all_w)   # SCN extra além do base
+                    has_ag        = any(wc[w]["Ag+"]  > 0 for w in all_w)   # Prata adicionada
+                    has_ox        = any(wc[w]["C2O4_2-"] > 0 for w in all_w) # Oxalato adicionado
+                    
+                    all_done = has_extra_fe and has_extra_scn and has_ag and has_ox
+                    
+                    if all_done:
+                        st.markdown("---")
+                        st.success(
+                            "🎉 **Atividade concluída!** Todas as reações previstas pelo Princípio de Le Châtelier "
+                            "foram observadas na placa.\n\n"
+                            "📋 **Próximo passo:** Realize o registo das observações no guião laboratorial, "
+                            "descrevendo as cores observadas em cada cavidade e justificando o deslocamento "
+                            "do equilíbrio com base na perturbação efetuada."
+                        )
+                    else:
+                        # Mostra o progresso das reações em falta
+                        missing = []
+                        if not has_extra_fe:  missing.append("excesso de Fe(NO₃)₃")
+                        if not has_extra_scn: missing.append("excesso de KSCN")
+                        if not has_ag:        missing.append("AgNO₃")
+                        if not has_ox:        missing.append("Na₂C₂O₄")
+                        st.info(f"📊 Perturbações em falta: **{', '.join(missing)}**")
+
 
 with col2:
     st.subheader("Placa de Microanálise")
@@ -528,3 +558,4 @@ with col2:
     _, colB, _ = st.columns([1,1,1])
     with colB:
         st.button("🔄 Reiniciar Ambiente", on_click=reset_simulation)
+
