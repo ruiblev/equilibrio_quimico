@@ -32,6 +32,9 @@ if 'well_colors' not in st.session_state:
         for r in ['A', 'B', 'C', 'D'] 
         for c in [1, 2, 3]
     }
+    
+if 'prev_well_colors' not in st.session_state:
+    st.session_state.prev_well_colors = st.session_state.well_colors.copy()
 
 if 'added_reagents' not in st.session_state:
     st.session_state.added_reagents = {
@@ -63,24 +66,28 @@ def reset_simulation():
 # Lógica das Reações do Passo 4
 def add_to_row_A():
     st.session_state.active_animation = 'A'
+    st.session_state.prev_well_colors = st.session_state.well_colors.copy()
     st.session_state.well_colors["A2"] = COLORS["dark_red_1"]
     st.session_state.well_colors["A3"] = COLORS["dark_red_2"]
     st.session_state.added_reagents['A'] = True
 
 def add_to_row_B():
     st.session_state.active_animation = 'B'
+    st.session_state.prev_well_colors = st.session_state.well_colors.copy()
     st.session_state.well_colors["B2"] = COLORS["dark_red_1"]
     st.session_state.well_colors["B3"] = COLORS["dark_red_2"]
     st.session_state.added_reagents['B'] = True
 
 def add_to_row_C():
     st.session_state.active_animation = 'C'
+    st.session_state.prev_well_colors = st.session_state.well_colors.copy()
     st.session_state.well_colors["C2"] = COLORS["orange"]
     st.session_state.well_colors["C3"] = COLORS["pale_yellow"]
     st.session_state.added_reagents['C'] = True
 
 def add_to_row_D():
     st.session_state.active_animation = 'D'
+    st.session_state.prev_well_colors = st.session_state.well_colors.copy()
     st.session_state.well_colors["D2"] = COLORS["orange"]
     st.session_state.well_colors["D3"] = COLORS["pale_yellow"]
     st.session_state.added_reagents['D'] = True
@@ -149,6 +156,7 @@ with col1:
         if st.session_state.step == 2:
             def trigger_step_2():
                 st.session_state.active_animation = 'all'
+                st.session_state.prev_well_colors = st.session_state.well_colors.copy()
                 for k in st.session_state.well_colors:
                     st.session_state.well_colors[k] = COLORS["red"]
                 next_step()
@@ -199,11 +207,11 @@ with col1:
         def get_color_name(hex_code):
             rev_colors = {v: k for k, v in COLORS.items()}
             mapping = {
-                "red": "Vermelho (Padrão)",
-                "dark_red_1": "Rubi intenso",
-                "dark_red_2": "Vermelho muito escuro/carmim",
+                "red": "Vermelho",
+                "dark_red_1": "Vermelho intenso",
+                "dark_red_2": "Vermelho escuro",
                 "orange": "Alaranjado",
-                "pale_yellow": "Amarelo pálido/Incolor"
+                "pale_yellow": "Amarelo claro"
             }
             color_key = rev_colors.get(hex_code, "Incolor")
             return mapping.get(color_key, "Incolor")
@@ -231,7 +239,8 @@ with col2:
     render_microplate(
         st.session_state.well_colors, 
         active_animation=current_animation,
-        custom_labels=st.session_state.custom_labels
+        custom_labels=st.session_state.custom_labels,
+        prev_well_colors=st.session_state.prev_well_colors
     )
 
     colA, colB, colC = st.columns([1,1,1])

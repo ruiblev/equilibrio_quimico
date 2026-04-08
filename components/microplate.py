@@ -1,6 +1,6 @@
 import streamlit as st
 
-def render_microplate(well_colors, active_animation=None, custom_labels=None):
+def render_microplate(well_colors, active_animation=None, custom_labels=None, prev_well_colors=None):
     """
     Renders a 4x3 microplate.
     active_animation limits the animation to certain targets ('all', 'water', 'A', 'B', 'C', 'D', None)
@@ -9,6 +9,8 @@ def render_microplate(well_colors, active_animation=None, custom_labels=None):
     """
     if custom_labels is None:
         custom_labels = {}
+    if prev_well_colors is None:
+        prev_well_colors = well_colors
 
     css = """
     <style>
@@ -78,8 +80,15 @@ def render_microplate(well_colors, active_animation=None, custom_labels=None):
         box-shadow: inset 0px -10px 15px rgba(0,0,0,0.2);
         transition: background-color 1s ease-in-out;
     }
+    @keyframes color-mix {
+        0% { background-color: var(--old-color); }
+        40% { background-color: var(--old-color); }
+        90% { background-color: var(--new-color); }
+        100% { background-color: var(--new-color); }
+    }
+    
     .well-liquid.animating {
-        transition-delay: 2.5s;
+        animation: color-mix 2.5s forwards;
     }
     .custom-label {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -127,7 +136,10 @@ def render_microplate(well_colors, active_animation=None, custom_labels=None):
         for col in [1, 2, 3]:
             well_id = f"{row}{col}"
             color = well_colors.get(well_id, "transparent")
+            old_color = prev_well_colors.get(well_id, "transparent")
+            
             liquid_style = f"background-color: {color};" if color != "transparent" else "background-color: transparent;"
+            liquid_style += f" --old-color: {old_color}; --new-color: {color};"
 
             is_animating = False
             if active_animation == 'all':
