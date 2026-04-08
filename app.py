@@ -195,22 +195,22 @@ with col1:
         st.markdown(f"**Efeito de Fe³⁺**")
         st.caption(f"{lbl.get('A2', '')} (1 gota); {lbl.get('A3', '')} (2 gotas)")
         if not st.session_state.added_reagents['A']:
-            st.button("Adicionar Fe(NO₃)₃", on_click=add_to_row_A, key="btn_A")
+            st.button("Adicionar Trinitrato de Ferro — Fe(NO₃)₃", on_click=add_to_row_A, key="btn_A")
             
         st.markdown(f"**Efeito de SCN⁻**")
         st.caption(f"{lbl.get('B2', '')} (1 gota); {lbl.get('B3', '')} (2 gotas)")
         if not st.session_state.added_reagents['B']:
-            st.button("Adicionar KSCN", on_click=add_to_row_B, key="btn_B")
+            st.button("Adicionar Tiocianato de Potássio — KSCN", on_click=add_to_row_B, key="btn_B")
             
         st.markdown(f"**Efeito de Ag⁺**")
         st.caption(f"{lbl.get('C2', '')} (1 gota); {lbl.get('C3', '')} (2 gotas)")
         if not st.session_state.added_reagents['C']:
-            st.button("Adicionar AgNO₃", on_click=add_to_row_C, key="btn_C")
+            st.button("Adicionar Nitrato de Prata — AgNO₃", on_click=add_to_row_C, key="btn_C")
             
         st.markdown(f"**Efeito de C₂O₄²⁻**")
         st.caption(f"{lbl.get('D2', '')} (1 gota); {lbl.get('D3', '')} (2 gotas)")
         if not st.session_state.added_reagents['D']:
-            st.button("Adicionar Na₂C₂O₄", on_click=add_to_row_D, key="btn_D")
+            st.button("Adicionar Oxalato de Dissódio — Na₂C₂O₄", on_click=add_to_row_D, key="btn_D")
 
         if all(st.session_state.added_reagents.values()):
             st.success("Reagentes adicionados. Verifique a placa e as tonalidades decorrentes do Princípio de Le Châtelier (Análise pós-laboratorial).")
