@@ -70,6 +70,12 @@ if 'added_reagents' not in st.session_state:
 if 'p_step' not in st.session_state:
     st.session_state.p_step = 1
 
+if 'p_substep' not in st.session_state:
+    st.session_state.p_substep = 1
+
+if 'p_feedback' not in st.session_state:
+    st.session_state.p_feedback = None
+
 if 'well_contents' not in st.session_state:
     st.session_state.well_contents = {
         f"{r}{c}": {"Fe3+": 0, "SCN-": 0, "Ag+": 0, "C2O4_2-": 0, "H2O": 0}
@@ -85,7 +91,18 @@ def next_step(): st.session_state.step += 1
 def next_p_step(): st.session_state.p_step += 1
 
 def reset_simulation():
-    reset_all_state()
+    if st.session_state.sim_mode == "Modo Prático-Experimental":
+        st.session_state.p_substep = 1
+        st.session_state.p_feedback = None
+        st.session_state.well_colors = {f"{r}{c}": COLORS["empty"] for r in ['A', 'B', 'C', 'D'] for c in [1, 2, 3]}
+        st.session_state.prev_well_colors = st.session_state.well_colors.copy()
+        st.session_state.well_contents = {
+            f"{r}{c}": {"Fe3+": 0, "SCN-": 0, "Ag+": 0, "C2O4_2-": 0, "H2O": 0}
+            for r in ['A', 'B', 'C', 'D'] for c in [1, 2, 3]
+        }
+        st.session_state.selected_wells_ui = []
+    else:
+        reset_all_state()
 
 # --- FUNÇÕES CALCULADORAS DO MODO PRÁTICO ---
 def calculate_color(c):
@@ -117,12 +134,9 @@ def calculate_color(c):
 def apply_practical_dispenser(reagent, drops):
     selected = st.session_state.selected_wells_ui
     if not selected:
-        st.warning("Selecione pelo menos uma cavidade alvo!")
+        st.session_state.p_feedback = {"type": "warning", "msg": "Selecione pelo menos uma cavidade alvo!"}
         return
 
-    st.session_state.active_animation = selected
-    st.session_state.prev_well_colors = st.session_state.well_colors.copy()
-    
     key_map = {
         "Fe(NO₃)₃ (aq)": "Fe3+",
         "KSCN (aq)": "SCN-",
@@ -131,10 +145,39 @@ def apply_practical_dispenser(reagent, drops):
         "Água destilada": "H2O"
     }
     k = key_map[reagent]
+
+    # Validação do Supervisor Secreto
+    if st.session_state.p_substep == 1:
+        if k not in ["Fe3+", "SCN-"]:
+            st.session_state.p_feedback = {"type": "error", "msg": "Dica: Será prudente adicionar reagentes de perturbação ou solventes antes de formar o complexo base colorido [FeSCN]²⁺ em toda a placa?"}
+            return
+            
+    elif st.session_state.p_substep == 2:
+        if k != "H2O":
+            st.session_state.p_feedback = {"type": "error", "msg": "Dica: Estudar os efeitos das concentrações exige rigor de volume inicial. Consulta o guião... não terás de equiparar os níveis da solução usando alguma porção do solvente universal?"}
+            return
+
+    st.session_state.p_feedback = {"type": "success", "msg": "Adição processada com sucesso."}
+    st.session_state.active_animation = selected
+    st.session_state.prev_well_colors = st.session_state.well_colors.copy()
     
     for w in selected:
         st.session_state.well_contents[w][k] += drops
         st.session_state.well_colors[w] = calculate_color(st.session_state.well_contents[w])
+
+    # Validação de Missão Cumprida para avançar
+    all_w = [f"{r}{c}" for r in ['A','B','C','D'] for c in [1,2,3]]
+    if st.session_state.p_substep == 1:
+        has_eq = all(st.session_state.well_contents[w]["Fe3+"] > 0 and st.session_state.well_contents[w]["SCN-"] > 0 for w in all_w)
+        if has_eq:
+            st.session_state.p_substep = 2
+            st.session_state.p_feedback = {"type": "success", "msg": "Excelente! Equilíbrio padrão criado em toda a placa. Pronto para a fase de nivelamento de volumes."}
+            
+    elif st.session_state.p_substep == 2:
+        has_water = any(st.session_state.well_contents[w]["H2O"] > 0 for w in all_w)
+        if has_water:
+            st.session_state.p_substep = 3
+            st.session_state.p_feedback = {"type": "success", "msg": "Nivelamento atingido! Está agora desbloqueado(a) para executar adições perturbadoras nas cavidades à sua escolha."}
 
 
 # ==========================================
@@ -328,10 +371,67 @@ with col1:
             elif st.session_state.p_step > 2:
                 st.success("✅ Reagentes Separados.")
 
-        # FASE 3: PIPETAGEM LIVRE
-        with st.expander("3. Estação de Adição Dinâmica", expanded=(st.session_state.p_step == 3)):
+        # FASE 3: IDENTIFICAÇÃO DE CAVIDADES (P_STEP 3)
+        with st.expander("3. Identificação de Cavidades", expanded=(st.session_state.p_step == 3)):
             if st.session_state.p_step == 3:
+                st.write("Identifique as cavidades para referência futura:")
+                valid_p = True
+                temp_labels_p = {}
+                distinct_check_p = set()
+                empty_count_p = 0
+                has_duplicates_p = False
+                
+                for row in ['A', 'B', 'C', 'D']:
+                    r_cols = st.columns([1, 1, 1])
+                    for i, col_idx in enumerate([1, 2, 3]):
+                        with r_cols[i]:
+                            key = f"{row}{col_idx}"
+                            val = st.text_input("Cav", key=f"p_in_{key}", label_visibility="collapsed")
+                            v_strip = val.strip().upper()
+                            if not v_strip:
+                                valid_p = False
+                                empty_count_p += 1
+                            elif v_strip in distinct_check_p:
+                                valid_p = False
+                                has_duplicates_p += True
+                            else:
+                                temp_labels_p[key] = v_strip
+                                distinct_check_p.add(v_strip)
+                st.markdown("---")
+                if valid_p and len(temp_labels_p) == 12:
+                    st.success("✅ Identificações únicas validadas!")
+                    def confirm_p_labels():
+                        st.session_state.custom_labels = temp_labels_p
+                        next_p_step()
+                    st.button("Confirmar Nomenclatura ➔", on_click=confirm_p_labels, type="primary")
+                else:
+                    if empty_count_p < 12 and (empty_count_p > 0 or has_duplicates_p):
+                        if empty_count_p > 0 and has_duplicates_p:
+                            st.error(f"⚠️ Erro: Faltam preencher {empty_count_p} cavidade(s). E existem duplicações.")
+                        elif empty_count_p > 0:
+                            st.warning(f"⚠️ Atenção: Preencha as {empty_count_p} cavidade(s) vazia(s).")
+                        elif has_duplicates_p:
+                            st.error("⚠️ Atenção: Há referências repetidas.")
+            elif st.session_state.p_step > 3:
+                st.success("✅ Cavidades identificadas.")
+
+        # FASE 4: PIPETAGEM LIVRE
+        with st.expander("4. Estação de Adição Dinâmica", expanded=(st.session_state.p_step == 4)):
+            if st.session_state.p_step == 4:
                 st.info("Adicione os volumes livremente e observe o desenrolar das reações termodinâmicas.")
+                if st.session_state.p_substep == 1:
+                    st.caption("Fase Atual: Criar Equilíbrio [FeSCN]²⁺ em toda a placa.")
+                elif st.session_state.p_substep == 2:
+                    st.caption("Fase Atual: Nivelamento de Volumes.")
+                elif st.session_state.p_substep == 3:
+                    st.caption("Fase Atual: Perturbações (Livre Estudante).")
+
+                if st.session_state.p_feedback:
+                    fb = st.session_state.p_feedback
+                    if fb["type"] == "error": st.error(fb["msg"])
+                    elif fb["type"] == "warning": st.warning(fb["msg"])
+                    elif fb["type"] == "success": st.success(fb["msg"])
+
                 p_reag = st.selectbox("Reagente a aplicar:", ["Fe(NO₃)₃ (aq)", "KSCN (aq)", "AgNO₃ (aq)", "Na₂C₂O₄ (aq)", "Água destilada"])
                 p_drops = st.number_input("Nº de Gotas:", 1, 10, 1)
                 
