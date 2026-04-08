@@ -41,6 +41,9 @@ if 'added_reagents' not in st.session_state:
 if 'active_animation' not in st.session_state:
     st.session_state.active_animation = None
 
+if 'custom_labels' not in st.session_state:
+    st.session_state.custom_labels = {}
+
 # Captura animação pendente
 current_animation = st.session_state.active_animation
 # Limpa para a próxima interação
@@ -95,33 +98,44 @@ with col1:
     
     # Passo 1
     with st.expander("Passo 1", expanded=(st.session_state.step == 1)):
-        st.write("1. Identifique as cavidades da placa de microanálise inserindo a sua referência (ex: A1, B2) na grelha abaixo:")
+        st.write("1. Identifique as cavidades da sua placa inserindo texto livre abaixo (ex: AA, 11, WX, Cav1):")
         if st.session_state.step == 1:
             st.markdown("---")
-            m_cols = st.columns([0.5, 1, 1, 1])
-            with m_cols[1]: st.markdown("**Col 1**")
-            with m_cols[2]: st.markdown("**Col 2**")
-            with m_cols[3]: st.markdown("**Col 3**")
-            all_correct = True
             
+            valid = True
+            temp_labels = {}
+            distinct_check = set()
+            
+            # Grelha Cega (3x4)
             for row in ['A', 'B', 'C', 'D']:
-                r_cols = st.columns([0.5, 1, 1, 1])
-                with r_cols[0]: st.markdown(f"<br>**Linha {row}**", unsafe_allow_html=True)
+                r_cols = st.columns([1, 1, 1])
                 for i, col in enumerate([1, 2, 3]):
-                    with r_cols[i+1]:
-                        val = st.text_input("Cav", key=f"in_{row}{col}", placeholder=f"Ex: {row}{col}", label_visibility="collapsed")
-                        # Verifica se o aluno inseriu o label correto, ignorando espaços e maiúsculas
-                        if val.strip().upper() != f"{row}{col}":
-                            all_correct = False
+                    with r_cols[i]:
+                        key = f"{row}{col}"
+                        val = st.text_input("Cav", key=f"in_{key}", label_visibility="collapsed")
+                        v_strip = val.strip().upper()
+                        
+                        if not v_strip:
+                            valid = False
+                        elif v_strip in distinct_check:
+                            valid = False # Duplicados inválidos
+                        else:
+                            temp_labels[key] = v_strip
+                            distinct_check.add(v_strip)
 
             st.markdown("---")
-            if all_correct:
-                st.success("✅ Todas as cavidades foram identificadas corretamente!")
-                st.button("Avançar para Passo 2 ➔", on_click=next_step, type="primary")
+            if valid and len(temp_labels) == 12:
+                st.success("✅ Todas as 12 cavidades possuem identificações únicas validadas!")
+                def confirm_labels():
+                    st.session_state.custom_labels = temp_labels
+                    next_step()
+                st.button("Atribuir e Avançar para Passo 2 ➔", on_click=confirm_labels, type="primary")
             else:
-                st.info("Preencha todas as 12 caixas corretamente para prosseguir.")
+                st.info("Preencha todas as 12 caixas com referências distintas/únicas para poder prosseguir.")
         else:
-            st.success("✅ Cavidades identificadas.")
+            st.success("✅ Nomenclaturas registadas com sucesso.")
+
+    lbl = st.session_state.custom_labels
 
     # Passo 2
     with st.expander("Passo 2", expanded=(st.session_state.step == 2)):
@@ -141,36 +155,36 @@ with col1:
     # Passo 3
     with st.expander("Passo 3", expanded=(st.session_state.step == 3)):
         st.write("3. Nivele os volumes:")
-        st.write("- 2 gotas de água nas cavidades da coluna 1")
-        st.write("- 1 gota de água nas cavidades da coluna 2")
+        st.write("- 2 gotas de água nas cavidades da primeira coluna")
+        st.write("- 1 gota de água nas cavidades da segunda coluna")
         if st.session_state.step == 3:
             def trigger_step_3():
                 st.session_state.active_animation = 'water'
                 next_step()
                 
-            st.button("Adicionar Água nas Colunas 1 e 2 ➔", on_click=trigger_step_3, type="primary")
+            st.button("Adicionar Água nas Colunas referidas ➔", on_click=trigger_step_3, type="primary")
 
     # Passo 4
     with st.expander("Passo 4", expanded=(st.session_state.step == 4)):
-        st.write("4. Adicione gotas das várias soluções reagentes:")
+        st.write("4. Adicione gotas das várias soluções reagentes, agitando:")
         
-        st.markdown("**Linha A** (Efeito de Fe³⁺)")
-        st.caption("A2 (1 gota); A3 (2 gotas)")
+        st.markdown(f"**Efeito de Fe³⁺**")
+        st.caption(f"{lbl.get('A2', '')} (1 gota); {lbl.get('A3', '')} (2 gotas)")
         if not st.session_state.added_reagents['A']:
             st.button("Adicionar Fe(NO₃)₃", on_click=add_to_row_A, key="btn_A")
             
-        st.markdown("**Linha B** (Efeito de SCN⁻)")
-        st.caption("B2 (1 gota); B3 (2 gotas)")
+        st.markdown(f"**Efeito de SCN⁻**")
+        st.caption(f"{lbl.get('B2', '')} (1 gota); {lbl.get('B3', '')} (2 gotas)")
         if not st.session_state.added_reagents['B']:
             st.button("Adicionar KSCN", on_click=add_to_row_B, key="btn_B")
             
-        st.markdown("**Linha C** (Efeito de Ag⁺)")
-        st.caption("C2 (1 gota); C3 (2 gotas)")
+        st.markdown(f"**Efeito de Ag⁺**")
+        st.caption(f"{lbl.get('C2', '')} (1 gota); {lbl.get('C3', '')} (2 gotas)")
         if not st.session_state.added_reagents['C']:
             st.button("Adicionar AgNO₃", on_click=add_to_row_C, key="btn_C")
             
-        st.markdown("**Linha D** (Efeito de C₂O₄²⁻)")
-        st.caption("D2 (1 gota); D3 (2 gotas)")
+        st.markdown(f"**Efeito de C₂O₄²⁻**")
+        st.caption(f"{lbl.get('D2', '')} (1 gota); {lbl.get('D3', '')} (2 gotas)")
         if not st.session_state.added_reagents['D']:
             st.button("Adicionar Na₂C₂O₄", on_click=add_to_row_D, key="btn_D")
 
@@ -193,11 +207,16 @@ with col1:
 
         if all(st.session_state.added_reagents.values()):
             data = {
-                "Cavidade": ["A", "B", "C", "D"],
                 "Adicionado (aq)": ["Fe(NO₃)₃", "KSCN", "AgNO₃", "Na₂C₂O₄"],
-                "Col 1 (Controlo)": [get_color_name(st.session_state.well_colors[f"{r}1"]) for r in ['A','B','C','D']],
-                "Col 2 (1 Gota)": [get_color_name(st.session_state.well_colors[f"{r}2"]) for r in ['A','B','C','D']],
-                "Col 3 (2 Gotas)": [get_color_name(st.session_state.well_colors[f"{r}3"]) for r in ['A','B','C','D']]
+                "Controlo": [
+                    f"[{lbl.get(f'{r}1', '')}] {get_color_name(st.session_state.well_colors[f'{r}1'])}" for r in ['A','B','C','D']
+                ],
+                "1 Gota Adicionada": [
+                    f"[{lbl.get(f'{r}2', '')}] {get_color_name(st.session_state.well_colors[f'{r}2'])}" for r in ['A','B','C','D']
+                ],
+                "2 Gotas Adicionadas": [
+                    f"[{lbl.get(f'{r}3', '')}] {get_color_name(st.session_state.well_colors[f'{r}3'])}" for r in ['A','B','C','D']
+                ]
             }
             df = pd.DataFrame(data)
             st.dataframe(df, hide_index=True)
@@ -205,8 +224,12 @@ with col1:
 with col2:
     st.subheader("Placa de Microanálise")
     
-    # Passa o current_animation para o render_microplate
-    render_microplate(st.session_state.well_colors, active_animation=current_animation)
+    # Passa o custom_labels e animation para atualizar interativamente a placa do lado direito
+    render_microplate(
+        st.session_state.well_colors, 
+        active_animation=current_animation,
+        custom_labels=st.session_state.custom_labels
+    )
 
     colA, colB, colC = st.columns([1,1,1])
     with colB:
