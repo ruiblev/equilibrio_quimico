@@ -27,11 +27,10 @@ div[data-testid="stColumn"]:nth-of-type(2) {
 # --- Constantes de Cores ---
 COLORS = {
     "empty": "transparent",
-    "red": "#c41b1b",        
-    "dark_red_1": "#8a0c0c",   
-    "dark_red_2": "#4a0505",   
-    "orange": "#d18f2e",       
-    "pale_yellow": "#f0e6b6"   
+    "red": "#c0392b",           # vermelho-vivo (Col 1 base)
+    "dark_red_1": "#7b0c0c",   # vermelho mais intenso (A/B col 2 & 3)
+    "white_ppt": "#e0dfd9",    # precipitado branco opaco (C col 2 & 3)
+    "yellow_fe": "#c9a227",    # amarelado Fe³⁺ (D col 2 & 3)
 }
 
 # --- Inicialização do Estado Básico ---
@@ -125,22 +124,29 @@ def calculate_color(c):
     
     if fe == 0 and scn == 0:
         return COLORS["empty"]
-        
+
+    # Ag+ precipita SCN- (AgSCN branco); Oxalato complexa Fe³+ (incolor/amarelo)
     active_scn = max(0, scn - ag)
-    active_fe = max(0, fe - ox)
+    active_fe  = max(0, fe - ox)
     
-    # Princípio de Le Châtelier aproximado pela multiplicação (Constante K = Prod/Reag)
-    score = active_fe * active_scn
+    # Precipitado branco: Ag+ excedeu SCN- disponível (toda a cor desaparece)
+    if ag > 0 and active_scn == 0:
+        return COLORS["white_ppt"]
     
-    if score >= 3: return COLORS["dark_red_2"]
-    if score == 2: return COLORS["dark_red_1"]
-    if score == 1: return COLORS["red"]
-        
-    if score == 0:
-        if active_fe > 0 and fe > 1:
-            return COLORS["orange"] 
+    # Equilibrio deslocado pela remoção de Fe³+: sobra SCN- livre mas sem Fe -> amarelo/incolor
+    if ox > 0 and active_fe == 0:
+        return COLORS["yellow_fe"]
+    
+    # Equilibrio base ou deslocado no sentido direto (mais produto vermelho)
+    if active_fe > 0 and active_scn > 0:
+        # Quanto maior o excesso de reagentes adicionados, mais intenso o vermelho
+        extra = (active_fe + active_scn) - 2   # estado base = 1 gota Fe + 1 gota SCN = soma 2
+        if extra >= 2:
+            return COLORS["dark_red_1"]  # vermelho mais intenso
         else:
-            return COLORS["pale_yellow"] 
+            return COLORS["red"]         # vermelho-vivo base
+    
+    return COLORS["yellow_fe"]
 
 def apply_practical_dispenser(reagent, drops):
     selected = st.session_state.selected_wells_ui
@@ -286,25 +292,25 @@ with col1:
                 st.session_state.active_animation = 'A'
                 st.session_state.prev_well_colors = st.session_state.well_colors.copy()
                 st.session_state.well_colors["A2"] = COLORS["dark_red_1"]
-                st.session_state.well_colors["A3"] = COLORS["dark_red_2"]
+                st.session_state.well_colors["A3"] = COLORS["dark_red_1"]
                 st.session_state.added_reagents['A'] = True
             def mk_B(): 
                 st.session_state.active_animation = 'B'
                 st.session_state.prev_well_colors = st.session_state.well_colors.copy()
                 st.session_state.well_colors["B2"] = COLORS["dark_red_1"]
-                st.session_state.well_colors["B3"] = COLORS["dark_red_2"]
+                st.session_state.well_colors["B3"] = COLORS["dark_red_1"]
                 st.session_state.added_reagents['B'] = True
             def mk_C(): 
                 st.session_state.active_animation = 'C'
                 st.session_state.prev_well_colors = st.session_state.well_colors.copy()
-                st.session_state.well_colors["C2"] = COLORS["orange"]
-                st.session_state.well_colors["C3"] = COLORS["pale_yellow"]
+                st.session_state.well_colors["C2"] = COLORS["white_ppt"]
+                st.session_state.well_colors["C3"] = COLORS["white_ppt"]
                 st.session_state.added_reagents['C'] = True
             def mk_D(): 
                 st.session_state.active_animation = 'D'
                 st.session_state.prev_well_colors = st.session_state.well_colors.copy()
-                st.session_state.well_colors["D2"] = COLORS["orange"]
-                st.session_state.well_colors["D3"] = COLORS["pale_yellow"]
+                st.session_state.well_colors["D2"] = COLORS["yellow_fe"]
+                st.session_state.well_colors["D3"] = COLORS["yellow_fe"]
                 st.session_state.added_reagents['D'] = True
 
             st.caption(f"{lbl.get('A2', '')} (1 gota Fe³⁺); {lbl.get('A3', '')} (2 gotas Fe³⁺)")
@@ -321,7 +327,12 @@ with col1:
 
         with st.expander("📋 Registo de Cores Finais", expanded=(st.session_state.step >= 4 and all(st.session_state.added_reagents.values()))):
             def get_color_name(hex_code):
-                mapping = {"#c41b1b": "Vermelho", "#8a0c0c": "Vermelho intenso", "#4a0505": "Vermelho escuro", "#d18f2e": "Alaranjado", "#f0e6b6": "Amarelo claro"}
+                mapping = {
+                    "#c0392b": "Vermelho-vivo",
+                    "#7b0c0c": "Vermelho intenso",
+                    "#e0dfd9": "Precipitado branco opaco",
+                    "#c9a227": "Amarelado (Fe³⁺)"
+                }
                 return mapping.get(hex_code, "Incolor")
             if all(st.session_state.added_reagents.values()):
                 df = pd.DataFrame({
@@ -340,7 +351,7 @@ with col1:
         st.subheader("Modo Prático: BANCADA DO ALUNO")
 
         # FASE 1: MATERIAL
-        with st.expander("1. Seleção de Material Escolar", expanded=(st.session_state.p_step == 1)):
+        with st.expander("1. Seleção de Material", expanded=(st.session_state.p_step == 1)):
             if st.session_state.p_step == 1:
                 st.write("Assinale o material necessário para realizar a atividade segundo o protocolo:")
                 target_mat = {"Placa de microanálise", "Conta-gotas", "Microvaretas", "Óculos de Proteção"}
