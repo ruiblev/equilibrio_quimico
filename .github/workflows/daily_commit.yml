@@ -1,0 +1,31 @@
+name: Daily Commit
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Corre de 6 em 6 horas
+  workflow_dispatch:         # Permite execução manual
+
+permissions:
+  contents: write            # Necessário para fazer push de commits
+
+jobs:
+  daily-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create keep-alive commit
+        run: |
+          echo "keep-alive: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > .keep_alive
+          git add .keep_alive
+          git commit -m "chore: keep-alive $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
